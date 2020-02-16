@@ -1,6 +1,5 @@
 #ifndef DARKNET_API
 #define DARKNET_API
-#define OPENCV
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
 #define inline __inline

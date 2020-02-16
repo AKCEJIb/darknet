@@ -756,7 +756,6 @@ public:
 
 * This repo have API for classifier predictions: [link](https://github.com/AKCEJIb/darknet/blob/master/include/yolo_classifier_class.hpp)
 * You can compile this repo like in previous selection.
-* It's compiling with OpenCV, you should have this package installed.
 * Target name are `yolo_cpp_classifier_dll`, so Release lib will named as `yolo_cpp_classifier_dll.dll`
 * Right now it's using only file paths, does not accept OpenCV materials.
 
