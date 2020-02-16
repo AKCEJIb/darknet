@@ -35,6 +35,7 @@ More details: http://pjreddie.com/darknet/yolo/
 10.  [How to improve object detection](#how-to-improve-object-detection)
 11.  [How to mark bounded boxes of objects and create annotation files](#how-to-mark-bounded-boxes-of-objects-and-create-annotation-files)
 12. [How to use Yolo as DLL and SO libraries](#how-to-use-yolo-as-dll-and-so-libraries)
+13. [Difference between this repository and original](#difference-between-this-repository-and-original)
 
 |  ![Darknet Logo](http://pjreddie.com/media/files/darknet-black-small.png) | &nbsp; ![map_fps](https://user-images.githubusercontent.com/4096485/71702416-6645dc00-2de0-11ea-8d65-de7d4b604021.png) mAP@0.5 (AP50) - FPS (GeForce 1080 Ti) https://arxiv.org/abs/1911.11929 https://github.com/WongKinYiu/CrossStagePartialNetworks - more models |
 |---|---|
@@ -749,4 +750,140 @@ public:
 	std::shared_ptr<image_t> mat_to_image_resize(cv::Mat mat) const;
 #endif
 };
+```
+
+### Difference between this repository and original
+
+* This repo have API for classifier predictions: [link](https://github.com/AKCEJIb/darknet/blob/master/include/yolo_classifier_class.hpp)
+* You can compile this repo like in previous selection.
+* It's compiling with OpenCV, you should have this package installed.
+* Target name are `yolo_cpp_classifier_dll`, so Release lib will named as `yolo_cpp_classifier_dll.dll`
+* Right now it's using only file paths, does not accept OpenCV materials.
+
+`C# Wrapper for compiled .dll file example`
+* **Interface**
+```
+public interface IClassifierWrapper
+{
+	void Dispose();
+	IEnumerable<ClassifierItem> Predict(string filename, int top);
+	ClassifierItem PredictOne(string filename);
+}
+
+```
+* **Implementation**
+```
+public class ClassifierWrapper : IDisposable, IClassifierWrapper
+{
+	private const string DllName = @"yolo_cpp_classifier_dll.dll";
+	private const int MaxObjects = 1000;
+	private const int NameLenght = 256;
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct classifier_t
+	{
+	    public UInt32 class_id;
+	    public float prob;
+	}
+
+	[StructLayout(LayoutKind.Sequential)]
+	private struct Container
+	{
+	    [MarshalAs(UnmanagedType.ByValArray, SizeConst = MaxObjects)]
+	    public classifier_t[] candidates;
+	}
+
+	[DllImport(DllName, EntryPoint = "init_classifier")]
+	private static extern int InitalizeClassifier(
+	    string dataFilename,
+	    string cfgFilename,
+	    string weightFilename);
+
+	[DllImport(DllName, EntryPoint = "dispose_classifier")]
+	private static extern int DisposeClassifier();
+
+	[DllImport(DllName, EntryPoint = "predict_top_classifier")]
+	private static extern int PredictClassifier(
+	    string filename,
+	    ref Container result,
+	    int top);
+	[DllImport(DllName, EntryPoint = "get_class_name")]
+	private static extern int GetClassifierClassName(int classId, byte[] buf);
+
+	public ClassifierWrapper(
+	    string dataFilename,
+	    string cfgFilename,
+	    string weightFilename)
+	{
+
+	    if (!File.Exists(dataFilename))
+		throw new ArgumentException($"Data file not found! {dataFilename}");
+	    if (!File.Exists(cfgFilename))
+		throw new ArgumentException($"Configuration file not found! {cfgFilename}");
+	    if (!File.Exists(weightFilename))
+		throw new ArgumentException($"Weights file not found! {weightFilename}");
+
+	    InitalizeClassifier(dataFilename, cfgFilename, weightFilename);
+	}
+	
+	public ClassifierItem PredictOne(string filename)
+	{
+	    return Predict(filename, 1).Single();
+	}
+	
+	public IEnumerable<ClassifierItem> Predict(string filename, int top)
+	{
+	    if (!File.Exists(filename))
+		throw new ArgumentException($"Image file not found! {filename}");
+
+	    var container = new Container();
+	    var count = PredictClassifier(filename, ref container, top);
+	    List<ClassifierItem> items = new List<ClassifierItem>();
+
+	    foreach (var item in container.candidates)
+	    {
+		if (item.prob != 0)
+		    items.Add(new ClassifierItem(
+			item.class_id,
+			GetClassName((int)item.class_id),
+			item.prob));
+	    }
+	    return items;
+	}
+	private string GetClassName(int classId)
+	{
+	    byte[] buf = new byte[NameLenght];
+	    var size = GetClassifierClassName(classId, buf);
+
+	    return Encoding.ASCII.GetString(buf, 0, size);
+	}
+
+	public void Dispose()
+	{
+	    Debug.WriteLine($"{nameof(ClassifierWrapper)} disposed.");
+	    DisposeClassifier();
+	}
+}
+```
+* **Using example**
+```
+using (var cw = new ClassifierWrapper(
+	@"D:\cifar\cifar.data",
+	@"D:\cifar\cifar_small.cfg",
+	@"D:\cifar\cifar_small_last.weights"))
+	{
+	var fileList = Directory.EnumerateFiles(
+	      @"D:\cifar\test",
+	      $"*.png",
+	      SearchOption.AllDirectories)
+	    .ToList();
+
+	Console.WriteLine("ID\tCLASS NAME\tCONFIDENCE\tFILENAME");
+
+	foreach (var file in fileList)
+	{
+	    var itm = cw.PredictOne(file);
+	    Console.WriteLine($"{itm.ClassId} \t{itm.ClassName} \t{itm.Confidence} \t{file}");
+	}
+}
 ```
