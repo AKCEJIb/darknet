@@ -762,9 +762,8 @@ public:
 `C# Wrapper for compiled .dll file example`
 * **Interface**
 ```
-public interface IClassifierWrapper
+public interface IClassifierWrapper : IDisposable
 {
-	void Dispose();
 	IEnumerable<ClassifierItem> Predict(string filename, int top);
 	ClassifierItem PredictOne(string filename);
 }
@@ -772,7 +771,7 @@ public interface IClassifierWrapper
 ```
 * **Implementation**
 ```
-public class ClassifierWrapper : IDisposable, IClassifierWrapper
+public class ClassifierWrapper : IClassifierWrapper
 {
 	private const string DllName = @"yolo_cpp_classifier_dll.dll";
 	private const int MaxObjects = 1000;
