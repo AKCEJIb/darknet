@@ -3,7 +3,7 @@
 
 More details: http://pjreddie.com/darknet/yolo/
 
-
+[![time tracker](https://wakatime.com/badge/github/AKCEJIb/darknet.svg)](https://wakatime.com/badge/github/AKCEJIb/darknet)
 [![CircleCI](https://circleci.com/gh/AKCEJIb/darknet.svg?style=svg)](https://circleci.com/gh/AKCEJIb/darknet)
 [![TravisCI](https://travis-ci.org/AKCEJIb/darknet.svg?branch=master)](https://travis-ci.org/AKCEJIb/darknet)
 [![AppveyorCI](https://ci.appveyor.com/api/projects/status/64n4dctph5oe2o11?svg=true)](https://ci.appveyor.com/project/AKCEJIb/darknet/branch/master)
