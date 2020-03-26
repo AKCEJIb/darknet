@@ -40,6 +40,21 @@ LIB_API int predict_top_classifier(const char* image_filename, classifier_t_cont
     return predictions_vec.size();
 }
 
+LIB_API int predict_top_classifier_cv2(const uint8_t* data, const size_t data_length, classifier_t_container& result, int top)
+{
+#ifdef OPENCV
+    std::vector<char> vdata(data, data + data_length);
+    cv::Mat image = imdecode(cv::Mat(vdata), 1);
+
+    std::vector<classifier_t> predictions_vec = classifier->predict(mat_to_image_cv((mat_cv*)&image), top);
+
+    for (size_t i = 0; i < predictions_vec.size() && i < C_SHARP_MAX_OBJECTS; ++i)
+        result.candidates[i] = predictions_vec[i];
+    return predictions_vec.size();
+#else
+    return -1;
+#endif
+}
 LIB_API size_t get_class_name(int class_id, char* result)
 {
     strcpy(result, classifier->get_class_name(class_id));
@@ -93,14 +108,18 @@ LIB_API Classifier::Classifier(std::string data_filename, std::string cfg_filena
 
 LIB_API std::vector<classifier_t> Classifier::predict(std::string image_filename, int top)
 {
+    char* imageFile = const_cast<char*>(image_filename.c_str());
+
+    return this->predict(load_image_color(imageFile, 0, 0), top);
+}
+
+LIB_API std::vector<classifier_t> Classifier::predict(image im, int top)
+{
     std::vector<classifier_t> result_vec;
 
     if (top != 0) conf_top = top;
     if (top > classes_count) conf_top = classes_count;
 
-    char* imageFile = const_cast<char*>(image_filename.c_str());
-
-    image im = load_image_color(imageFile, 0, 0);
     image resized = resize_min(im, net.w);
     image r = crop_image(resized, (resized.w - net.w) / 2, (resized.h - net.h) / 2, net.w, net.h);
 
@@ -109,16 +128,16 @@ LIB_API std::vector<classifier_t> Classifier::predict(std::string image_filename
 
     if (net.hierarchy) hierarchy_predictions(predictions, net.outputs, net.hierarchy, 0);
     top_k(predictions, net.outputs, conf_top, indexes);
-    
+
     for (int i = 0; i < conf_top; ++i) {
         int index = indexes[i];
 
         classifier_t ct;
-        ct.class_id     = index;
-        ct.prob         = predictions[index];
+        ct.class_id = index;
+        ct.prob = predictions[index];
 
-       /* printf(" f = %s, classid = %d, class_name = %s, prob = %f \n", imageFile, index, names[index], predictions[index]);
-        fflush(stdout);*/
+        /* printf(" f = %s, classid = %d, class_name = %s, prob = %f \n", imageFile, index, names[index], predictions[index]);
+         fflush(stdout);*/
 
         result_vec.push_back(ct);
     }
@@ -126,7 +145,7 @@ LIB_API std::vector<classifier_t> Classifier::predict(std::string image_filename
     free_image(r);
     free_image(im);
     free_image(resized);
- 
+
     return result_vec;
 }
 
